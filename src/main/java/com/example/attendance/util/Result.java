@@ -1,4 +1,4 @@
-package com.example.attendance.common;
+package com.example.attendance.util;
 
 public class Result<T> {
     private Integer code;    // 状态码：200代表成功
