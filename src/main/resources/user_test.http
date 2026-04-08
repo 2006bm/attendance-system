@@ -1,0 +1,30 @@
+### 1. 新增教师用户
+POST http://localhost:8080/user/create
+Content-Type: application/json
+
+{
+  "username": "teacher_li",
+  "password": "password456",
+  "realName": "李华",
+  "role": "TEACHER"
+}
+
+### 2. 根据 ID 查询用户 (假设刚才生成的 ID 是 3)
+GET http://localhost:8080/user/3
+
+### 3. 获取所有教师列表
+GET http://localhost:8080/user/teachers
+
+### 4. 更新用户信息
+PUT http://localhost:8080/user/update
+Content-Type: application/json
+
+{
+  "id": 3,
+  "password": "newpassword789",
+  "realName": "李华(已修改)",
+  "role": "TEACHER"
+}
+
+### 5. 删除用户
+DELETE http://localhost:8080/user/3
