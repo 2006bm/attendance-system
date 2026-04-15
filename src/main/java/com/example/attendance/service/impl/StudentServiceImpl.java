@@ -1,26 +1,60 @@
+//package com.example.attendance.service.impl;
+//
+//import com.example.attendance.dao.StudentDao;
+//import com.example.attendance.entity.Student;
+//import com.example.attendance.service.StudentService;
+//import org.springframework.beans.factory.annotation.Autowired;
+//import org.springframework.stereotype.Service;
+//
+//@Service
+//public class StudentServiceImpl implements StudentService {
+//    @Autowired
+//    private StudentDao studentDao;
+//
+//    @Override
+//    public String createStudent(Student student) {
+//        if(student.getStudentName()==null || student.getStudentName().isEmpty()) {
+//            throw new RuntimeException("姓名不能为空");
+//        }
+//        studentDao.insert(student);
+//        return "创建成功";
+//    }
+//    @Override
+//    public Student getStudentById(String studentId) {
+//        return studentDao.findById(studentId);
+//    }
+//}
+
 package com.example.attendance.service.impl;
 
-import com.example.attendance.dao.StudentDao;
 import com.example.attendance.entity.Student;
+import com.example.attendance.repository.StudentRepository; // 导入新接口
 import com.example.attendance.service.StudentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
 public class StudentServiceImpl implements StudentService {
+
     @Autowired
-    private StudentDao studentDao;
+    private StudentRepository studentRepository; // 注入 JPA 仓库
 
     @Override
     public String createStudent(Student student) {
-        if(student.getStudentName()==null || student.getStudentName().isEmpty()) {
-            throw new RuntimeException("姓名不能为空");
+        // 1. 简单的业务校验
+        if (student.getStudentId() == null || student.getStudentId().isEmpty()) {
+            throw new RuntimeException("学号不能为空！");
         }
-        studentDao.insert(student);
-        return "创建成功";
+
+        // 2. 调用 JPA 的 save 方法。这就是“自动驾驶”！
+        // 它会自动生成 INSERT INTO student_info ... 的 SQL 并执行
+        studentRepository.save(student);
+
+        return "学生信息已成功存入 PostgreSQL 数据库！";
     }
+
     @Override
     public Student getStudentById(String studentId) {
-        return studentDao.findById(studentId);
+        return studentRepository.findByStudentId(studentId);
     }
 }

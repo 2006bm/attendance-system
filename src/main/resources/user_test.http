@@ -28,3 +28,18 @@ Content-Type: application/json
 
 ### 5. 删除用户
 DELETE http://localhost:8080/user/3
+
+
+### 1. 提交一条签到记录
+POST http://localhost:8080/attendance/signin
+Content-Type: application/json
+
+{
+  "studentId": "20210001",
+  "studentName": "张三",
+  "courseId": "CS101",
+  "status": "NORMAL"
+}
+
+### 2. 查询张三的签到历史
+GET http://localhost:8080/attendance/history/20210001
