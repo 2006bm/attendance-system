@@ -43,3 +43,25 @@ Content-Type: application/json
 
 ### 2. 查询张三的签到历史
 GET http://localhost:8080/attendance/history/20210001
+
+
+###分页查询
+### 测试分页查询 - 第一页，每页3条
+GET http://localhost:8080/attendance/page?page=0&size=3
+
+### 测试分页查询 - 第二页，每页3条
+GET http://localhost:8080/attendance/page?page=1&size=3
+
+### 测试特定学生的分页查询
+GET http://localhost:8080/attendance/page?page=0&size=2&studentId=20210001
+
+
+###
+GET http://localhost:8080/attendance/page?sortField=studentId&direction=asc
+
+###
+GET http://localhost:8080/attendance/page?sortField=checkInTime&direction=desc
+
+###
+http://localhost:8080/attendance/search?studentId=20210001
+
