@@ -31,6 +31,7 @@ dependencies {
     // 2. 添加这行：这是 H2 数据库，一个不需要安装、直接跑在内存里的临时数据库，非常适合教学
     //runtimeOnly 'com.h2database:h2'
     runtimeOnly 'org.postgresql:postgresql'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
 }
 
 tasks.named('test') {

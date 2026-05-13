@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 public class AttendanceSystemApplication {
     public static void main(String[] args) {
+//        System.out.println("123456加密后的新密文是：" + new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode("123456"));
         SpringApplication.run(AttendanceSystemApplication.class, args);
     }
 

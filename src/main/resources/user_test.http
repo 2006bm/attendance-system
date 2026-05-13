@@ -1,7 +1,30 @@
+### 1. 登录 (获取门禁卡)
+POST http://localhost:8080/login
+Content-Type: application/x-www-form-urlencoded
+
+username=admin01&password=123456
+
+### 2. 用门禁卡访问管理员接口 (这里的 Cookie 会自动带上)
+GET http://localhost:8080/user/teachers
+
+
+
+
+POST http://localhost:8080/user/register
+Content-Type: application/json
+
+{
+  "username": "new_student",
+  "password": "my_password_123",
+  "realName": "新同学",
+  "role": "STUDENT"
+}
+
+
+
 ### 1. 新增教师用户
 POST http://localhost:8080/user/create
 Content-Type: application/json
-
 {
   "username": "teacher_li",
   "password": "password456",

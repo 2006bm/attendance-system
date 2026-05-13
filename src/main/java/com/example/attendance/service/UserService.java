@@ -1,5 +1,6 @@
 package com.example.attendance.service;
 
+import com.example.attendance.entity.RegisterRequest;
 import com.example.attendance.entity.User;
 import java.util.List;
 
@@ -9,4 +10,6 @@ public interface UserService {
     List<User> getAllTeachers();
     String updateUser(User user);
     String deleteUser(Long id);
+
+    String register(RegisterRequest request);
 }
