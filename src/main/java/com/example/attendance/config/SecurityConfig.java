@@ -27,13 +27,14 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable()) // 教学阶段先禁用 CSRF，方便 Postman 测试
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/login", "/user/register", "/register","/css/**", "/js/**").permitAll() // 登录和注册不需要门票
+                        .requestMatchers("/login", "/user/register", "/register","/student/list", "/dashboard","/css/**", "/js/**","/favicon.ico","/error","/student/add","/student/save","/student/**").permitAll() // 登录和注册不需要门票
                         .anyRequest().authenticated()                       // 其余所有接口都要登录后才能看
                 )
                 .formLogin(form -> form
                         .loginPage("/login")             // 告诉系统，登录页去哪里找
                         .loginProcessingUrl("/login")   // 告诉系统，登录请求往哪里发
-                        .defaultSuccessUrl("/dashboard") // 登录成功后去哪
+                        //.defaultSuccessUrl("/dashboard",true) // 登录成功后去哪
+                        .defaultSuccessUrl("/student/list", true)
                         .permitAll()) // 使用系统自带的登录页面
                 .logout(logout -> logout.permitAll());
 

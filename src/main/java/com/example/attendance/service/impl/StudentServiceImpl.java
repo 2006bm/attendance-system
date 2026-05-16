@@ -31,6 +31,8 @@ import com.example.attendance.entity.Student;
 import com.example.attendance.repository.StudentRepository; // 导入新接口
 import com.example.attendance.service.StudentService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -56,5 +58,20 @@ public class StudentServiceImpl implements StudentService {
     @Override
     public Student getStudentById(String studentId) {
         return studentRepository.findByStudentId(studentId);
+    }
+
+    @Override
+    public void save(Student student) {
+        studentRepository.save(student);
+    }
+
+    @Override
+    public Page<Student> findAll(Pageable pageable) {
+        return studentRepository.findAll(pageable); // JPA自带findAll支持分页
+    }
+    @Override
+    public Student findById(Long id) {
+        // 假设你的 repository 是 studentRepository
+        return studentRepository.findById(id).orElse(null);
     }
 }

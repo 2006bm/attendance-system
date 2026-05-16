@@ -53,15 +53,15 @@ public class UserController {
         return Result.success(userService.deleteUser(id));
     }
 
-    //注册
-    @PostMapping("/register")
-    public Result<String> register(@RequestBody RegisterRequest request) {
+    // 注册：去掉 @RequestBody，使用普通的对象接收参数
+    @PostMapping("/user/register")
+    public String register(RegisterRequest request) {
         try {
-            String message = userService.register(request);
-            return Result.success(message);
-        } catch (RuntimeException e) {
-            // 如果用户名重复，返回失败信息
-            return new Result<>(400, e.getMessage(), null);
+            userService.register(request);
+            return "redirect:/login";
+        } catch (Exception e) {
+            e.printStackTrace(); // 在控制台打印具体的错误信息
+            return "redirect:/register?error=true";
         }
     }
 
