@@ -74,4 +74,9 @@ public class StudentServiceImpl implements StudentService {
         // 假设你的 repository 是 studentRepository
         return studentRepository.findById(id).orElse(null);
     }
+    @Override
+    public Student findByStudentId(String studentId) {
+        // 逻辑极其简单：让 Service 去调用你之前写好的 StudentRepository 仓库！
+        return studentRepository.findByStudentId(studentId);
+    }
 }

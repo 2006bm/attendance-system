@@ -1,0 +1,35 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4"
+     xmlns:th="http://www.thymeleaf.org"
+     th:fragment="navbar(activeTab)">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="/dashboard">🏫 考勤系统</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                    <!-- 1. 考勤打卡 -->
+                    <a class="nav-link"
+                       th:classappend="${activeTab == 'checkIn'} ? 'active' : ''"
+                       href="/attendance/checkIn">⏱️ 考勤打卡</a>
+                </li>
+                <li class="nav-item">
+                    <!-- 2. 考勤记录 (刚才漏掉的在这个地方！) -->
+                    <a class="nav-link"
+                       th:classappend="${activeTab == 'attendanceList'} ? 'active' : ''"
+                       href="/attendance/list">📋 考勤记录</a>
+                </li>
+                <li class="nav-item">
+                    <!-- 3. 学生列表 -->
+                    <a class="nav-link"
+                       th:classappend="${activeTab == 'studentList'} ? 'active' : ''"
+                       href="/student/list">👥 学生列表</a>
+                </li>
+            </ul>
+            <span class="navbar-text">
+                <a class="btn btn-sm btn-outline-danger" href="/logout">安全退出</a>
+            </span>
+        </div>
+    </div>
+</nav>

@@ -12,4 +12,6 @@ public interface StudentService {
     Student getStudentById(String studentId);
     Student findById(Long id);
     void save(@Valid Student student);
+
+    Student findByStudentId(String studentId);
 }

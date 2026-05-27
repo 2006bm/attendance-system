@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>学生考勤打卡</title>
+    <!-- 引入 Bootstrap 5 美化 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container mt-5">
+<div th:replace="fragments/navbar :: navbar('checkIn')"></div>
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow p-4">
+            <h2 class="text-center mb-4">⏱️ 考勤打卡</h2>
+
+            <!-- 1. 打卡成功提示框 -->
+            <div th:if="${param.success}" class="alert alert-success alert-dismissible fade show" role="alert">
+                🎉 <strong>打卡成功！</strong> 您的考勤记录已安全更新。
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+
+            <!-- 2. 打卡失败提示框（如：不在打卡时间内） -->
+            <div th:if="${errorMsg}" class="alert alert-danger alert-dismissible fade show" role="alert">
+                ❌ <strong th:text="${errorMsg}">打卡失败</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+
+            <!-- 3. 打卡表单 -->
+            <form th:action="@{/attendance/checkIn}" method="post">
+
+                <!-- 动态选择课程 -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">选择当前课程：</label>
+                    <select class="form-select" name="courseId" required>
+                        <option value="">-- 请选择要打卡的课程 --</option>
+                        <!-- Thymeleaf 循环渲染：把你数据库里查出来的该学生的选课，一个一个列出来 -->
+                        <option th:each="course : ${courses}"
+                                th:value="${course.courseId}"
+                                th:text="${course.courseName} + ' (' + ${course.className} + ')'">
+                        </option>
+                    </select>
+                </div>
+
+                <!-- 自动读取系统当前时间 (只读，学生不能修改，保证真实性) -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">打卡时间：</label>
+                    <input type="text" class="form-control bg-light"
+                           th:value="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd HH:mm')}"
+                           readonly />
+                    <small class="text-muted">（打卡时间以服务器系统时间为准）</small>
+                </div>
+
+                <!-- 备注 (选填) -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">备注/假条：</label>
+                    <textarea class="form-control" name="remark" rows="3" placeholder="如有迟到、请假等特殊情况请说明..."></textarea>
+                </div>
+
+                <!-- 提交按钮 -->
+                <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">提交打卡</button>
+
+                <div class="text-center mt-3">
+                    <a href="/dashboard" class="text-decoration-none">返回系统首页</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 引入 Bootstrap JS 激活弹窗的关闭按钮 -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

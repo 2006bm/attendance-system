@@ -27,7 +27,7 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable()) // 教学阶段先禁用 CSRF，方便 Postman 测试
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/login", "/user/register", "/register","/student/list", "/dashboard","/css/**", "/js/**","/favicon.ico","/error","/student/add","/student/save","/student/**").permitAll() // 登录和注册不需要门票
+                        .requestMatchers("/login", "/user/register", "/register","/student/list", "/dashboard","/css/**", "/js/**","/favicon.ico","/error","/student/**").permitAll() // 登录和注册不需要门票
                         .anyRequest().authenticated()                       // 其余所有接口都要登录后才能看
                 )
                 .formLogin(form -> form

@@ -1,29 +1,49 @@
 package com.example.attendance.controller;
 
 import com.example.attendance.entity.Attendance;
+import com.example.attendance.entity.Course;
+import com.example.attendance.entity.Student;
 import com.example.attendance.repository.AttendanceRepository;
 import com.example.attendance.service.AttendanceService;
+import com.example.attendance.service.CourseService;
+import com.example.attendance.service.StudentService;
 import com.example.attendance.util.Result;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-@RestController
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.temporal.TemporalAdjusters;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.io.PrintWriter;
+@Controller
 @RequestMapping("/attendance")
 public class AttendanceController {
 
     @Autowired
     private AttendanceService attendanceService;
-
+    @Autowired
+    private StudentService studentService;
+    @Autowired
+    private CourseService courseService;
     // 提交考勤记录
     @PostMapping("/signin")
     public Result<Attendance> signIn(@RequestBody Attendance attendance) {
@@ -85,54 +105,181 @@ public class AttendanceController {
         Page<Attendance> result = attendanceRepository.findAll(spec, pageable);
         return Result.success(result);
     }
-//    @GetMapping("/page")
-//    public Result<Page<Attendance>> getAttendancePage(
 
-//            // defaultValue 是字符串，page 默认从 0 开始（第一页是 0）
-//            @RequestParam(defaultValue = "0") int page,
-//            @RequestParam(defaultValue = "5") int size,
-//            @RequestParam(required = false) String studentId,
-//            // 知识运用：通过 @RequestParam 接收前端传来的“排序字段”和“方向”
-//            @RequestParam(defaultValue = "checkInTime") String sortField, // 默认按考勤日期
-//            @RequestParam(defaultValue = "desc") String direction) {
-//
-//        // 知识运用：将字符串 "asc"/"desc" 转换为 JPA 认识的 Sort.Direction 枚举
-//        Sort.Direction sortDirection = direction.equalsIgnoreCase("asc")
-//                ? Sort.Direction.ASC : Sort.Direction.DESC;
-//
-//        // 知识运用：创建 Sort 对象。Sort.by(方向, 字段)
-//        Sort sort = Sort.by(sortDirection, sortField);
-//
-//        // 知识运用：将创建好的排序规则 sort 塞进分页对象 Pageable 中
-//        Pageable pageable = PageRequest.of(page, size, sort);
-//
-//        Page<Attendance> result;
-//        if (studentId != null && !studentId.isEmpty()) {
-//            result = attendanceRepository.findByStudentId(studentId, pageable);
-//        } else {
-//            result = attendanceRepository.findAll(pageable);
-//        }
-//
-//        return Result.success(result);
-//    }
+    @PostMapping("/checkIn")
+    public String checkIn(@RequestParam String courseId,
+                          @RequestParam(required = false) String remark,
+                          Model model) {
+        String studentId = getCurrentStudentId(); // 获取当前登录学号
 
+        Student student = studentService.findByStudentId(studentId);
 
-//            @RequestParam(required = false) String studentId) {
-//
-//        // 1. 创建分页请求对象（还可以顺便加个排序，按签到时间倒序）
-//        Pageable pageable = PageRequest.of(page, size);
-//
-//        Page<Attendance> result;
-//
-//        // 2. 逻辑判断：是查询某个人的分页，还是查全部人的分页
-//
-//        if (studentId != null && !studentId.isEmpty()) {
-//            result = attendanceRepository.findByStudentId(studentId, pageable);
-//        } else {
-//            result = attendanceRepository.findAll(pageable);
-//        }
-//
-//        // 3. 返回统一格式
-//        return Result.success(result);
-//    }
+        Attendance attendance = new Attendance();
+        attendance.setStudentId(studentId);
+        attendance.setStudentName(student.getStudentName());
+        attendance.setCourseId(courseId);
+
+        try {
+            // 执行打卡
+            attendanceService.signIn(attendance);
+            // 打卡成功：带上成功提示，重定向回页面
+            return "redirect:/attendance/checkIn?success=true";
+        } catch (RuntimeException e) {
+            // 打卡失败（因时间限制）：捕获异常信息，塞入 Model 返回给前端页面显示！
+            model.addAttribute("errorMsg", e.getMessage());
+
+            // 别忘了把课程列表重新塞回去，否则页面报错
+            List<Course> courses = courseService.findByStudentId(studentId);
+            model.addAttribute("courses", courses);
+            return "attendance-check-in"; // 返回原页面展示错误红框
+        }
+    }
+
+    @GetMapping("/checkIn")
+    public String checkInPage(Model model) {
+        // 1. 获取当前登录学号
+        String studentId = getCurrentStudentId();
+
+        // 2. 查出这个学生选的所有课，塞进下拉框
+        List<Course> courses = courseService.findByStudentId(studentId);
+        model.addAttribute("courses", courses);
+
+        // 3. 返回你刚才写的 HTML 页面
+        return "attendance-check-in";
+    }
+    private String getCurrentStudentId() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (principal instanceof UserDetails) {
+            return ((UserDetails) principal).getUsername();
+        } else {
+            return principal.toString();
+        }
+    }
+
+    @GetMapping("/list")
+    public String list(
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String courseId,      // 1. 新增：课程筛选参数
+            @RequestParam(required = false) String quickRange,    // 2. 新增：快速时间参数 (today, week, month)
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            Model model) {
+
+        String studentId = getCurrentStudentId();
+
+        // 解析快捷时间 (今天、本周、本月)
+        LocalDate parsedStart = null;
+        LocalDate parsedEnd = null;
+
+        if ("today".equals(quickRange)) {
+            parsedStart = LocalDate.now();
+            parsedEnd = LocalDate.now();
+        } else if ("week".equals(quickRange)) {
+            // 本周一到本周日
+            parsedStart = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+            parsedEnd = LocalDate.now().with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
+        } else if ("month".equals(quickRange)) {
+            // 本月第一天到最后一天
+            parsedStart = LocalDate.now().with(TemporalAdjusters.firstDayOfMonth());
+            parsedEnd = LocalDate.now().with(TemporalAdjusters.lastDayOfMonth());
+        } else {
+            // 如果没选快捷时间，就用输入的自定义日期
+            if (startDate != null && !startDate.isEmpty()) parsedStart = LocalDate.parse(startDate);
+            if (endDate != null && !endDate.isEmpty()) parsedEnd = LocalDate.parse(endDate);
+        }
+
+        // 构建动态 SQL 规则 (JPA Specification)
+        final LocalDate finalStart = parsedStart;
+        final LocalDate finalEnd = parsedEnd;
+        Specification<Attendance> spec = Specification.where((root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            // 锁定当前登录学生
+            predicates.add(cb.equal(root.get("studentId"), studentId));
+
+            // 课程筛选
+            if (courseId != null && !courseId.isEmpty()) {
+                predicates.add(cb.equal(root.get("courseId"), courseId));
+            }
+
+            // 状态筛选
+            if (status != null && !status.isEmpty()) {
+                predicates.add(cb.equal(root.get("status"), status));
+            }
+
+            // 时间段筛选
+            if (finalStart != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("checkInTime"), finalStart.atStartOfDay()));
+            }
+            if (finalEnd != null) {
+                predicates.add(cb.lessThan(root.get("checkInTime"), finalEnd.plusDays(1).atStartOfDay()));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        });
+
+        Pageable pageable = PageRequest.of(page - 1, size, Sort.by("checkInTime").descending());
+        Page<Attendance> records = attendanceService.getFilteredPage(spec, pageable);
+
+        // 回传参数给 Thymeleaf 页面做表单回显
+        model.addAttribute("records", records.getContent());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", records.getTotalPages());
+        model.addAttribute("courseId", courseId);
+        model.addAttribute("status", status);
+        model.addAttribute("quickRange", quickRange);
+        model.addAttribute("startDate", parsedStart);
+        model.addAttribute("endDate", parsedEnd);
+
+        // 重新把课程列表塞回去，供下拉框选择
+        model.addAttribute("courses", courseService.findByStudentId(studentId));
+
+        return "attendance-list";
+    }
+
+    // 3. 新增数据导出功能：直接生成 Excel 可读的 CSV 文件下载
+    @GetMapping("/export")
+    public void exportAttendance(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String courseId,
+            HttpServletResponse response) throws IOException {
+
+        String studentId = getCurrentStudentId();
+
+        // 1. 构建过滤条件
+        Specification<Attendance> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.equal(root.get("studentId"), studentId));
+            if (courseId != null && !courseId.isEmpty()) predicates.add(cb.equal(root.get("courseId"), courseId));
+            if (status != null && !status.isEmpty()) predicates.add(cb.equal(root.get("status"), status));
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        List<Attendance> list = attendanceService.getFilteredList(spec);
+
+        // 2. 设置浏览器下载响应头 (确保浏览器知道这是个文件)
+        response.setContentType("text/csv; charset=UTF-8");
+        response.setHeader("Content-Disposition", "attachment; filename=\"attendance_report.csv\"");
+
+        // 3. 核心修复：只使用 getWriter()！
+        PrintWriter writer = response.getWriter();
+
+        // 4. 写入 UTF-8 的隐藏标识符 \uFEFF，防止 Excel 打开中文时乱码
+        writer.write('\uFEFF');
+
+        // 5. 写入表头和数据
+        writer.println("学号,学生姓名,课程ID,打卡时间,考勤状态");
+        for (Attendance a : list) {
+            writer.println(a.getStudentId() + "," +
+                    a.getStudentName() + "," +
+                    a.getCourseId() + "," +
+                    a.getCheckInTime() + "," +
+                    a.getStatus());
+        }
+
+        writer.flush();
+        writer.close(); // 记得关闭流
+    }
 }

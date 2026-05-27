@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>我的考勤记录</title>
+    <!-- 引入 Bootstrap 5 美化 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container mt-5">
+
+<!-- 1. 动态引入我们第十二周写的头部导航栏，并传递参数 'list' -->
+<div th:replace="fragments/navbar :: navbar('attendanceList')"></div>
+
+<div class="row justify-content-center">
+    <div class="col-md-11">
+        <h2 class="mb-4">📋 我的考勤记录</h2>
+
+        <!-- 2. 高级多条件筛选表单 -->
+        <!-- 注意：method="get" 表示点击查询时，参数会自动拼接到网址栏里 -->
+        <form th:action="@{/attendance/list}" method="get" class="card p-3 shadow-sm mb-4 bg-light">
+            <div class="row g-3">
+                <!-- 课程筛选 -->
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">课程选择：</label>
+                    <select name="courseId" class="form-select">
+                        <option value="">-- 全部课程 --</option>
+                        <!-- 循环渲染当前学生的选课，并实现“选中回显” -->
+                        <option th:each="c : ${courses}"
+                                th:value="${c.courseId}"
+                                th:text="${c.courseName}"
+                                th:selected="${c.courseId == courseId}">
+                        </option>
+                    </select>
+                </div>
+
+                <!-- 考勤状态筛选 -->
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">考勤状态：</label>
+                    <select name="status" class="form-select">
+                        <option value="">-- 全部状态 --</option>
+                        <option value="NORMAL" th:selected="${status == 'NORMAL'}">✅ 正常</option>
+                        <option value="LATE" th:selected="${status == 'LATE'}">⏰ 迟到</option>
+                        <option value="EARLY_LEAVE" th:selected="${status == 'EARLY_LEAVE'}">🚶 早退</option>
+                        <option value="ABSENT" th:selected="${status == 'ABSENT'}">❌ 缺勤</option>
+                    </select>
+                </div>
+
+                <!-- 快捷时间筛选 -->
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">时间范围：</label>
+                    <select name="quickRange" class="form-select">
+                        <option value="">自定义日期 (显示全部)</option>
+                        <option value="today" th:selected="${quickRange == 'today'}">📅 今天</option>
+                        <option value="week" th:selected="${quickRange == 'week'}">📅 本周</option>
+                        <option value="month" th:selected="${quickRange == 'month'}">📅 本月</option>
+                    </select>
+                </div>
+
+                <!-- 操作按钮组 -->
+                <div class="col-md-3 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-primary w-50 fw-bold">🔍 查询</button>
+                    <!-- 导出按钮：带上当前的筛选参数，点击一键下载 CSV -->
+                    <a th:href="@{/attendance/export(status=${status},courseId=${courseId})}"
+                       class="btn btn-success w-50 fw-bold">📥 导出</a>
+                </div>
+            </div>
+        </form>
+
+        <!-- 3. 数据展示表格 -->
+        <table class="table table-bordered table-hover shadow-sm bg-white">
+            <thead class="table-dark">
+            <tr class="text-center">
+                <th>日期</th>
+                <th>课程编号</th>
+                <th>打卡时间</th>
+                <th>考勤状态</th>
+            </tr>
+            </thead>
+            <tbody>
+            <!-- 如果没有记录，显示提示 -->
+            <tr th:if="${#lists.isEmpty(records)}">
+                <td colspan="4" class="text-center text-muted py-4">暂无符合条件的考勤记录。</td>
+            </tr>
+            <!-- 循环渲染考勤列表 -->
+            <tr th:each="record : ${records}" class="text-center align-middle">
+                <!-- 格式化日期：2023-10-23 -->
+                <td th:text="${#temporals.format(record.checkInTime, 'yyyy-MM-dd')}">2023-10-23</td>
+                <td th:text="${record.courseId}" class="fw-bold text-secondary">CS101</td>
+                <!-- 格式化时间：08:05:23 -->
+                <td th:text="${#temporals.format(record.checkInTime, 'HH:mm:ss')}">08:05:00</td>
+                <td>
+                    <!-- 动态状态微章：根据状态展示不同颜色的 Bootstrap 药丸微章 -->
+                    <span class="badge rounded-pill px-3 py-2"
+                          th:classappend="${record.status == 'NORMAL'} ? 'bg-success' :
+                                         (${record.status == 'LATE' || record.status == 'EARLY_LEAVE'} ? 'bg-warning text-dark' : 'bg-danger')"
+                          th:text="${record.status == 'NORMAL' ? '正常' :
+                                   (record.status == 'LATE' ? '迟到' :
+                                   (record.status == 'EARLY_LEAVE' ? '早退' : '缺勤'))}">
+                        正常
+                    </span>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+
+        <!-- 4. 智能分页导航栏 -->
+        <nav th:if="${totalPages > 0}" class="mt-4">
+            <ul class="pagination justify-content-center">
+                <!-- 上一页（注意：必须带上当前的筛选参数，否则翻页时筛选会丢失） -->
+                <li class="page-item" th:classappend="${currentPage == 1} ? 'disabled'">
+                    <a class="page-link" th:href="@{/attendance/list(page=${currentPage - 1}, courseId=${courseId}, status=${status}, quickRange=${quickRange})}">上一页</a>
+                </li>
+
+                <!-- 当前页数显示 -->
+                <li class="page-item active">
+                    <span class="page-link" th:text="${currentPage}">1</span>
+                </li>
+
+                <!-- 下一页 -->
+                <li class="page-item" th:classappend="${currentPage >= totalPages} ? 'disabled'">
+                    <a class="page-link" th:href="@{/attendance/list(page=${currentPage + 1}, courseId=${courseId}, status=${status}, quickRange=${quickRange})}">下一页</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+</div>
+
+<!-- 引入 Bootstrap JS 激活弹窗的关闭按钮 -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
