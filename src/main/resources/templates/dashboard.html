@@ -3,9 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <title>系统首页</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- 1. 👈 引入百度 ECharts 库，一秒获得图表绘制能力 -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
 </head>
-<body>
-<h1>欢迎来到考勤系统首页！</h1>
-<a href="/logout">退出登录</a>
+<body class="container mt-5">
+
+<!-- 引入导航栏 -->
+<div th:replace="fragments/navbar :: navbar('dashboard')"></div>
+
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card shadow p-4 mb-4">
+            <h2 class="text-center text-primary mb-4">📈 个人考勤多维度分析</h2>
+
+            <!-- 2. 展示核心数据卡片 -->
+            <div class="row text-center mb-4 g-3">
+                <div class="col-md-3">
+                    <div class="border rounded p-3 bg-light">
+                        <h6 class="text-muted">总签到次数</h6>
+                        <h3 class="fw-bold" th:text="${stats.totalCount}">0</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="border rounded p-3 bg-light">
+                        <h6 class="text-success">正常出勤</h6>
+                        <h3 class="fw-bold text-success" th:text="${stats.normalCount}">0</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="border rounded p-3 bg-light">
+                        <h6 class="text-warning">迟到/早退</h6>
+                        <h3 class="fw-bold text-warning" th:text="${stats.lateCount + stats.leaveCount}">0</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="border rounded p-3 bg-light">
+                        <h6 class="text-primary">当前出勤率</h6>
+                        <h3 class="fw-bold text-primary" th:text="${stats.attendanceRate} + '%'">0%</h3>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row justify-content-center">
+                <!-- 3. 👈 ECharts 图表容器（必须指定宽度和高度） -->
+                <div id="chartContainer" class="col-md-8" style="height: 400px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 4. 👈 编写 ECharts 渲染脚本 -->
+<script th:inline="javascript">
+    // 从 Thymeleaf 中直接读取后端传过来的统计数字
+    const normal = [[${stats.normalCount}]];
+    const late = [[${stats.lateCount}]];
+    const absent = [[${stats.absentCount}]];
+    const leave = [[${stats.leaveCount}]];
+
+    // 初始化图表
+    const chartDom = document.getElementById('chartContainer');
+    const myChart = echarts.init(chartDom);
+
+    // 配置图表属性 (标准环形饼图)
+    const option = {
+        title: {
+            text: '个人考勤状态分布',
+            left: 'center'
+        },
+        tooltip: {
+            trigger: 'item',
+            formatter: '{b} : {c} 次 ({d}%)'
+        },
+        legend: {
+            orient: 'vertical',
+            left: 'left'
+        },
+        series: [
+            {
+                name: '考勤状态',
+                type: 'pie',
+                radius: ['40%', '70%'],
+                avoidLabelOverlap: false,
+                itemStyle: {
+                    borderRadius: 10,
+                    borderColor: '#fff',
+                    borderWidth: 2
+                },
+                // 填充刚才拿到的 Java 数据！
+                data: [
+                    { value: normal, name: '✅ 正常出勤', itemStyle: {color: '#2ea843'} },
+                    { value: late, name: '⏰ 迟到', itemStyle: {color: '#ffc107'} },
+                    { value: leave, name: '🚶 早退', itemStyle: {color: '#fd7e14'} },
+                    { value: absent, name: '❌ 缺勤', itemStyle: {color: '#dc3545'} }
+                ]
+            }
+        ]
+    };
+
+    // 绘制图表
+    myChart.setOption(option);
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

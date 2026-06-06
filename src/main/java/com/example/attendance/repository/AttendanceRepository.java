@@ -19,4 +19,9 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> , 
 
     // 2. 如果要按学号分页查询，就这样写：
     Page<Attendance> findByStudentId(String studentId, Pageable pageable);
+
+    long countByStudentId(String studentId);
+
+    // 👈 2. 自动统计该学生指定状态的打卡次数 (如 正常、迟到、早退、缺勤)
+    long countByStudentIdAndStatus(String studentId, String status);
 }

@@ -7,10 +7,12 @@ import com.example.attendance.repository.AttendanceRepository;
 import com.example.attendance.service.AttendanceService;
 import com.example.attendance.service.CourseService;
 import com.example.attendance.service.StudentService;
+import com.example.attendance.util.ImportResult;
 import com.example.attendance.util.Result;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -34,6 +36,11 @@ import java.time.temporal.TemporalAdjusters;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
+
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import java.io.File;
+
 @Controller
 @RequestMapping("/attendance")
 public class AttendanceController {
@@ -114,6 +121,12 @@ public class AttendanceController {
 
         Student student = studentService.findByStudentId(studentId);
 
+        if (student == null) {
+            model.addAttribute("errorMsg", "打卡失败：您当前登录的账号 [" + studentId + "] 在学生档案库中不存在，无法打卡！");
+            List<Course> courses = courseService.findByStudentId(studentId);
+            model.addAttribute("courses", courses);
+            return "attendance-check-in";
+        }
         Attendance attendance = new Attendance();
         attendance.setStudentId(studentId);
         attendance.setStudentName(student.getStudentName());
@@ -281,5 +294,55 @@ public class AttendanceController {
 
         writer.flush();
         writer.close(); // 记得关闭流
+    }
+
+    @Value("${file.upload.path}")
+    private String uploadPath;
+
+
+    // 1. 跳转到导入页面
+    @GetMapping("/import")
+    public String importPage() {
+        return "attendance-import"; // 对应 templates/attendance-import.html
+    }
+
+    // 2. 处理上传请求
+    @PostMapping("/import")
+    public String importFile(@RequestParam("file") MultipartFile file, RedirectAttributes redirectAttributes) {
+        // 验证文件是否为空
+        if (file.isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "请先选择一个文件！");
+            return "redirect:/attendance/import";
+        }
+
+        String filename = file.getOriginalFilename();
+        // 验证文件格式是否为 Excel
+        if (filename == null || (!filename.endsWith(".xlsx") && !filename.endsWith(".xls"))) {
+            redirectAttributes.addFlashAttribute("error", "文件格式不正确，只能上传 Excel 文件 (.xls, .xlsx)！");
+            return "redirect:/attendance/import";
+        }
+
+        ImportResult result = null;
+        try {
+            // 确保本地上传文件夹存在
+            File destDir = new File(uploadPath);
+            if (!destDir.exists()) destDir.mkdirs();
+
+            // 保存文件到本地
+            String filePath = uploadPath + filename;
+            file.transferTo(new File(filePath));
+
+            result = attendanceService.importFromExcel(filePath);
+
+            // 确保这两行都在！
+            redirectAttributes.addFlashAttribute("success",
+                    "导入完成！成功：" + result.getSuccessCount() + " 条，失败：" + result.getFailCount() + " 条。");
+            redirectAttributes.addFlashAttribute("errors", result.getErrors()); // 👈 必须传错误列表
+
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", "导入失败：" + e.getMessage());
+        }
+
+        return "redirect:/attendance/import";
     }
 }

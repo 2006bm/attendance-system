@@ -24,7 +24,8 @@ public class Attendance {
     private LocalDateTime checkInTime;
 
     private String status; // NORMAL, LATE, etc.
-
+    private Byte seatRow; // 座位行
+    private Byte seatCol; // 座位列
     // --- 构造方法 ---
     public Attendance() {}
 
@@ -41,4 +42,21 @@ public class Attendance {
     public void setCheckInTime(LocalDateTime checkInTime) { this.checkInTime = checkInTime; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    // 👈 任务二新增：座位行和列的 Getter/Setter
+    public Byte getSeatRow() {
+        return seatRow;
+    }
+
+    public void setSeatRow(Byte seatRow) {
+        this.seatRow = seatRow;
+    }
+
+    public Byte getSeatCol() {
+        return seatCol;
+    }
+
+    public void setSeatCol(Byte seatCol) {
+        this.seatCol = seatCol;
+    }
 }
