@@ -1,7 +1,11 @@
 package com.example.attendance.controller;
 
 import com.example.attendance.dto.AttendanceStatisticsDTO;
+import com.example.attendance.entity.User;
 import com.example.attendance.repository.StudentRepository;
+import com.example.attendance.repository.UserRepository;
+import com.example.attendance.service.CourseService;
+import com.example.attendance.service.StudentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -17,14 +21,20 @@ public class LoginController {
     private com.example.attendance.service.AttendanceStatisticsService statisticsService;
     @Autowired
     private StudentRepository studentRepository;
+    @Autowired
+    private StudentService studentService;
+    @Autowired
+    private CourseService courseService;
+
+    @Autowired
+    private UserRepository userRepository;
     // 1. 跳转到登录页面
     @GetMapping("/login")
     public String loginPage(@RequestParam(required = false) String error, Model model) {
         if (error != null) {
-            // 如果有 error 参数，往页面丢一个错误提示
             model.addAttribute("errorMsg", "用户名或密码错误！");
         }
-        return "login"; // 返回 templates/login.html
+        return "login";
     }
 
     // 2. 模拟验证逻辑 (实际项目建议整合进 Security 的 UserDetailsService)
@@ -37,23 +47,41 @@ public class LoginController {
         return "redirect:/login?error=true"; // 失败重定向回登录页并带上 error 参数
     }
 
-    // 3. 首页 (Dashboard)
     @GetMapping("/dashboard")
     public String dashboard(Authentication authentication, Model model) {
-        // 获取当前登录用户名
-        String username = authentication.getName();
+        // 👈 核心修改：判断用户是否已认证（且排除匿名用户）
+        if (authentication != null && authentication.isAuthenticated()
+                && !"anonymousUser".equals(authentication.getName())) {
 
-        // 1. 判断是否是学生身份 (Spring Security 角色在底层会带上 ROLE_ 前缀)
-        if (authentication.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_STUDENT"))) {
-            // 学生：获取个人统计
-            AttendanceStatisticsDTO stats = statisticsService.getStudentStats(username);
-            model.addAttribute("stats", stats);
-            model.addAttribute("role", "STUDENT"); // 塞入角色标识
+            String username = authentication.getName();
+            User user = userRepository.findByUsername(username).orElseThrow();
+
+            // 1. 判断是否是【学生】
+            if (authentication.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_STUDENT"))) {
+                AttendanceStatisticsDTO stats = statisticsService.getStudentStats(username);
+                model.addAttribute("stats", stats);
+                model.addAttribute("role", "STUDENT");
+
+                // 2. 判断是否是【教师】
+            } else if (authentication.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_TEACHER"))) {
+                // 教师：展示该教师所教课程的考勤饼图
+                AttendanceStatisticsDTO teacherStats = statisticsService.getTeacherStats(user.getId());
+                model.addAttribute("stats", teacherStats);
+
+                // 👈 【核心修复 1】：将全校学生数，替换为【该老师自己班级里的学生去重总数】！
+                long myStudentsCount = studentService.countByTeacherId(user.getId()); // 记得在 StudentService 里写个中转方法调用 studentRepository.countByTeacherId(teacherId)
+                model.addAttribute("totalStudents", myStudentsCount);
+
+                model.addAttribute("role", "TEACHER");
+            } else if (authentication.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN"))) {
+                model.addAttribute("role", "ADMIN");
+                model.addAttribute("totalUsers", userRepository.count());
+                model.addAttribute("totalCourses", courseService.getAllCourses().size());
+                model.addAttribute("totalStudents", studentService.getAllStudents().size());
+            }
         } else {
-            // 2. 教师或管理员：不进行个人统计，而是传递一些全局的管理数据
-            // 比如：系统里目前共有多少个学生，有多少条考勤记录
-            model.addAttribute("totalStudents", studentRepository.count());
-            model.addAttribute("role", "TEACHER"); // 塞入角色标识
+            // 👈 如果未登录，设置角色为 GUEST，不进行强制重定向
+            model.addAttribute("role", "GUEST");
         }
 
         return "dashboard";

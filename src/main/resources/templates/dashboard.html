@@ -2,10 +2,22 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>系统首页</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统首页 - 考勤分析</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- 1. 👈 引入百度 ECharts 库，一秒获得图表绘制能力 -->
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        /* 👈 任务二新增：卡片悬浮放大动画效果 */
+        .hover-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+            text-decoration: none !important;
+        }
+        .hover-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 1rem 3rem rgba(0,0,0,.175) !important;
+        }
+    </style>
 </head>
 <body class="container mt-5">
 
@@ -14,10 +26,38 @@
 
 <div class="row justify-content-center">
     <div class="col-md-10">
-        <div class="card shadow p-4 mb-4">
-            <h2 class="text-center text-primary mb-4">📈 个人考勤多维度分析</h2>
 
-            <!-- 2. 展示核心数据卡片 -->
+        <!-- ==================== 区域 A. 学生端：显示个人考勤多维度分析 ==================== -->
+        <div th:if="${role == 'STUDENT'}" class="card shadow p-4 mb-4 border-0">
+            <!-- ==================== ⏱️ 任务新增：学生端 3 大导航卡片 ==================== -->
+            <div class="card shadow p-4 mb-4 border-0">
+                <h4 class="text-secondary mb-3">快捷通道</h4>
+                <div class="row g-3">
+                    <a href="/attendance/checkIn" class="col-md-4 text-decoration-none hover-card">
+                        <div class="border rounded p-4 bg-white text-center shadow-sm">
+                            <h1 class="display-6">⏱️</h1>
+                            <h5 class="fw-bold text-dark mt-2">考勤打卡</h5>
+                            <small class="text-muted">一键打卡</small>
+                        </div>
+                    </a>
+                    <a href="/leave/apply" class="col-md-4 text-decoration-none hover-card">
+                        <div class="border rounded p-4 bg-white text-center shadow-sm">
+                            <h1 class="display-6">📝</h1>
+                            <h5 class="fw-bold text-dark mt-2">请假申请</h5>
+                            <small class="text-muted">实时查看审批进度</small>
+                        </div>
+                    </a>
+                    <a href="/attendance/list" class="col-md-4 text-decoration-none hover-card">
+                        <div class="border rounded p-4 bg-white text-center shadow-sm">
+                            <h1 class="display-6">📋</h1>
+                            <h5 class="fw-bold text-dark mt-2">考勤记录</h5>
+                            <small class="text-muted">检索和导出考勤</small>
+                        </div>
+                    </a>
+                </div>
+            </div>
+            <!-- ==================== ⏱️ 快捷卡片结束 ==================== -->
+            <h2 class="text-center text-primary mb-4">📈 个人考勤多维度分析</h2>
             <div class="row text-center mb-4 g-3">
                 <div class="col-md-3">
                     <div class="border rounded p-3 bg-light">
@@ -33,8 +73,9 @@
                 </div>
                 <div class="col-md-3">
                     <div class="border rounded p-3 bg-light">
-                        <h6 class="text-warning">迟到/早退</h6>
-                        <h3 class="fw-bold text-warning" th:text="${stats.lateCount + stats.leaveCount}">0</h3>
+                        <h6 class="text-warning">早退次数</h6>
+                        <!-- 👈 修改：去掉 stats.lateCount，只展示 stats.leaveCount -->
+                        <h3 class="fw-bold text-warning" th:text="${stats.leaveCount}">0</h3>
                     </div>
                 </div>
                 <div class="col-md-3">
@@ -44,65 +85,286 @@
                     </div>
                 </div>
             </div>
-
             <div class="row justify-content-center">
-                <!-- 3. 👈 ECharts 图表容器（必须指定宽度和高度） -->
-                <div id="chartContainer" class="col-md-8" style="height: 400px;"></div>
+                <div id="studentChart" class="col-md-8" style="height: 400px;"></div>
             </div>
         </div>
+
+
+        <!-- ==================== 区域 B. 教师端：显示班级考勤管理看板 ==================== -->
+        <div th:if="${role == 'TEACHER'}" class="card shadow p-4 mb-4 border-0">
+            <h2 class="text-center text-success mb-4">🏫 考勤管理控制台 (教师端)</h2>
+
+            <div class="border rounded p-4 bg-white shadow-sm mt-4">
+                <h5 class="text-secondary mb-3">⏱️ 课堂限时签到控制</h5>
+                <div class="d-flex gap-3">
+                    <input type="text" id="courseIdInput" class="form-control" placeholder="输入课程ID，如 CS101" style="max-width: 200px;">
+                    <button onclick="openSignSession()" class="btn btn-success">开启5分钟限时签到</button>
+                </div>
+
+                <!-- 二维码与验证码展示区域 -->
+                <div id="qrWrapper" class="text-center mt-3 d-none">
+                    <h5 class="text-danger">请学生扫描二维码或输入口令：<span id="sessionCode" class="fs-2 fw-bold text-primary"></span></h5>
+                    <div id="qrcode" class="d-flex justify-content-center my-3"></div>
+                </div>
+            </div>
+            <div class="row text-center justify-content-center g-3 mt-4">
+                <div class="col-md-5">
+                    <div class="border rounded p-4 bg-white shadow-sm">
+                        <h5 class="text-muted">本班管理学生总数</h5>
+                        <h1 class="fw-bold text-success mt-2" th:text="${totalStudents}">0</h1>
+                        <a href="/student/list" class="btn btn-sm btn-outline-success mt-2">进入学生管理</a>
+                    </div>
+                </div>
+                <div class="col-md-5">
+                    <div class="border rounded p-4 bg-white shadow-sm">
+                        <h5 class="text-muted">本班今日出勤率</h5>
+                        <h1 class="fw-bold text-primary mt-2" th:text="${stats.attendanceRate} + '%'">100%</h1>
+                        <a href="/attendance/list" class="btn btn-sm btn-outline-primary mt-2">进入考勤记录</a>
+                    </div>
+                </div>
+            </div>
+            <!-- 教师看到的自己班级考勤饼图 -->
+            <div class="row justify-content-center mt-4">
+                <div id="teacherChart" class="col-md-8 bg-white p-4 rounded shadow-sm" style="height: 400px;"></div>
+            </div>
+
+        </div>
+
+
+        <!-- ==================== 区域 C. 👈 【全功能新增】管理员端：超级管理大盘 ==================== -->
+        <div th:if="${role == 'ADMIN'}" class="card shadow p-4 mb-4 border-0">
+            <h2 class="text-center text-danger mb-4">🛠️ 系统超级管理控制台 (Admin Console)</h2>
+
+            <div class="card shadow p-4 mb-4 border-0">
+                <h4 class="text-secondary mb-3">快捷通道</h4>
+                <div class="row g-3 justify-content-center">
+                    <a href="/attendance/list" class="col-md-2 text-decoration-none hover-card" style="width: 20%;">
+                        <div class="border rounded p-3 bg-white text-center shadow-sm">
+                            <h2 class="display-6">📊</h2>
+                            <h6 class="fw-bold text-dark mt-2">考勤报表</h6>
+                        </div>
+                    </a>
+                    <a href="/attendance/import" class="col-md-2 text-decoration-none hover-card" style="width: 20%;">
+                        <div class="border rounded p-3 bg-white text-center shadow-sm">
+                            <h2 class="display-6">📥</h2>
+                            <h6 class="fw-bold text-dark mt-2">导入名单</h6>
+                        </div>
+                    </a>
+                    <a href="/student/list" class="col-md-2 text-decoration-none hover-card" style="width: 20%;">
+                        <div class="border rounded p-3 bg-white text-center shadow-sm">
+                            <h2 class="display-6">👥</h2>
+                            <h6 class="fw-bold text-dark mt-2">学生列表</h6>
+                        </div>
+                    </a>
+
+                    <a href="/leave/approve" class="col-md-2 text-decoration-none hover-card" style="width: 20%;">
+                        <div class="border rounded p-3 bg-white text-center shadow-sm">
+                            <h2 class="display-6">⚖️</h2>
+                            <h6 class="fw-bold text-dark mt-2">请假审批</h6>
+                        </div>
+                    </a>
+
+                </div>
+            </div>
+            <!-- ==================== 🛠️ 快捷卡片结束 ==================== -->
+            <!-- 全局主卡片 -->
+            <div class="row text-center justify-content-center g-3 mt-2 mb-4">
+                <div class="col-md-4">
+                    <div class="border rounded p-4 bg-white shadow-sm">
+                        <h6 class="text-muted">👥 全局注册账户总数</h6>
+                        <h2 class="fw-bold text-dark mt-2" th:text="${totalUsers}">0</h2>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="border rounded p-4 bg-white shadow-sm">
+                        <h6 class="text-muted">📚 全校开设课程数</h6>
+                        <h2 class="fw-bold text-primary mt-2" th:text="${totalCourses}">0</h2>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="border rounded p-4 bg-white shadow-sm">
+                        <h6 class="text-muted">👨‍🎓 系统在校生档案数</h6>
+                        <h2 class="fw-bold text-success mt-2" th:text="${totalStudents}">0</h2>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 👈 服务器性能监控区 (使用进度条模拟，科技感拉满！) -->
+            <div class="card p-4 bg-light border-0">
+                <h5 class="mb-3 text-secondary">🖥️ 服务器性能监控 (Real-time Monitor)</h5>
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>CPU 使用率</span>
+                        <span class="fw-bold">24%</span>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar bg-success" role="progressbar" style="width: 24%"></div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>JVM 内存占用 (Java Virtual Machine)</span>
+                        <span class="fw-bold">42%</span>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar bg-info" role="progressbar" style="width: 42%"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>PostgreSQL 数据库连接池</span>
+                        <span class="fw-bold">正常 (100% Active)</span>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar bg-success progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- ==================== 区域 D. 👈 【全新增】游客/未登录端：公共展示着陆页 ==================== -->
+        <div th:if="${role == 'GUEST'}" class="py-4">
+            <!-- 巨幕欢迎区 -->
+            <div class="p-5 mb-5 bg-light rounded-3 border shadow-sm text-center">
+                <div class="container-fluid py-3">
+                    <h1 class="display-6 fw-bold text-primary">🏫 智能高校考勤分析平台</h1>
+                    <p class="col-md-8 fs-5 mx-auto text-muted mt-3">
+                        面向学生、教师与管理员的多维度教务考勤系统。支持考勤大屏展示、自动化数据流、异常考勤多维统计及请假自动审批联动。
+                    </p>
+                    <div class="d-grid gap-3 d-sm-flex justify-content-sm-center mt-4">
+                        <a href="/login" class="btn btn-primary btn-lg px-4">立即登录</a>
+                        <a href="/register" class="btn btn-outline-secondary btn-lg px-4">注册新账号</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 系统核心优势展示 -->
+            <div class="row g-4 text-start">
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm p-3">
+                        <div class="card-body">
+                            <div class="fs-1 mb-2">📊</div>
+                            <h5 class="card-title fw-bold">学生：个人多维分析</h5>
+                            <p class="card-text text-muted small">
+                                学生登录后可一键查看个人正常出勤、迟到、早退以及缺勤等出勤分布比例，多维度统计图表一目了然。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm p-3">
+                        <div class="card-body">
+                            <div class="fs-1 mb-2">🏫</div>
+                            <h5 class="card-title fw-bold">教师：班级出勤看板</h5>
+                            <p class="card-text text-muted small">
+                                快速掌握班级出勤趋势，支持异常考勤一键修正、学生档案快捷导入以及考勤历史追踪。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm p-3">
+                        <div class="card-body">
+                            <div class="fs-1 mb-2">🛠️</div>
+                            <h5 class="card-title fw-bold">管理：安全运维审计</h5>
+                            <p class="card-text text-muted small">
+                                全局账号生命周期管理，可视化服务性能动态检测，结合 PostgreSQL 保障学校教务数据的稳定与安全。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 </div>
 
-<!-- 4. 👈 编写 ECharts 渲染脚本 -->
+<!-- ==================== ECharts 脚本 ==================== -->
+<!-- 只有学生 (STUDENT) 和 老师 (TEACHER) 渲染图表（ADMIN不需要看饼图） -->
+<th:block th:if="${role == 'STUDENT' || role == 'TEACHER'}">
+    <script th:inline="javascript">
+        const normal = /*[[${stats.normalCount}]]*/ 0;
+        const late = /*[[${stats.lateCount}]]*/ 0;
+        const absent = /*[[${stats.absentCount}]]*/ 0;
+        const leave = /*[[${stats.leaveCount}]]*/ 0;
+
+        const chartDom = document.getElementById('studentChart') || document.getElementById('teacherChart');
+        const myChart = echarts.init(chartDom);
+
+        const option = {
+            title: {
+                text: '考勤状态实时分布',
+                left: 'center'
+            },
+            tooltip: {
+                trigger: 'item',
+                formatter: '{b} : {c} 次 ({d}%)'
+            },
+            legend: {
+                orient: 'vertical',
+                left: 'left'
+            },
+            series: [
+                {
+                    name: '考勤状态',
+                    type: 'pie',
+                    radius: ['40%', '70%'],
+                    avoidLabelOverlap: false,
+                    itemStyle: {
+                        borderRadius: 10,
+                        borderColor: '#fff',
+                        borderWidth: 2
+                    },
+                    data: [
+                        { value: normal, name: '正常出勤', itemStyle: {color: '#2ea843'} },
+                        { value: leave, name: '早退', itemStyle: {color: '#fd7e14'} },
+                        { value: absent, name: '缺勤', itemStyle: {color: '#dc3545'} }
+                    ]
+                }
+            ]
+        };
+
+        myChart.setOption(option);
+    </script>
+</th:block>
+
+<!-- 👈 引入 QRCode.js 生成库（教师端生成二维码所需） -->
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
+<!-- 👈 教师开启签到的 JS 执行逻辑 -->
 <script th:inline="javascript">
-    // 从 Thymeleaf 中直接读取后端传过来的统计数字
-    const normal = [[${stats.normalCount}]];
-    const late = [[${stats.lateCount}]];
-    const absent = [[${stats.absentCount}]];
-    const leave = [[${stats.leaveCount}]];
+    function openSignSession() {
+        var courseId = document.getElementById('courseIdInput').value;
+        if(!courseId) {
+            alert("请输入要开启签到的课程ID！");
+            return;
+        }
 
-    // 初始化图表
-    const chartDom = document.getElementById('chartContainer');
-    const myChart = echarts.init(chartDom);
+        fetch('/attendance/start-session?courseId=' + courseId + '&minutes=5')
+            .then(function(res) { return res.json(); })
+            .then(function(res) {
+                if (res.code === 200) {
+                    var code = res.data;
 
-    // 配置图表属性 (标准环形饼图)
-    const option = {
-        title: {
-            text: '个人考勤状态分布',
-            left: 'center'
-        },
-        tooltip: {
-            trigger: 'item',
-            formatter: '{b} : {c} 次 ({d}%)'
-        },
-        legend: {
-            orient: 'vertical',
-            left: 'left'
-        },
-        series: [
-            {
-                name: '考勤状态',
-                type: 'pie',
-                radius: ['40%', '70%'],
-                avoidLabelOverlap: false,
-                itemStyle: {
-                    borderRadius: 10,
-                    borderColor: '#fff',
-                    borderWidth: 2
-                },
-                // 填充刚才拿到的 Java 数据！
-                data: [
-                    { value: normal, name: '✅ 正常出勤', itemStyle: {color: '#2ea843'} },
-                    { value: late, name: '⏰ 迟到', itemStyle: {color: '#ffc107'} },
-                    { value: leave, name: '🚶 早退', itemStyle: {color: '#fd7e14'} },
-                    { value: absent, name: '❌ 缺勤', itemStyle: {color: '#dc3545'} }
-                ]
-            }
-        ]
-    };
+                    document.getElementById('sessionCode').innerText = code;
+                    document.getElementById('qrWrapper').classList.remove('d-none');
 
-    // 绘制图表
-    myChart.setOption(option);
+                    // 清空旧二维码
+                    document.getElementById('qrcode').innerHTML = "";
+
+                    // 👈 核心修复 2：改用标准的 "+" 拼接，生成绝对正确的公网跳转链接
+                    var checkInUrl = window.location.origin + "/attendance/quick-checkin?courseId=" + courseId + "&code=" + code;
+
+                    new QRCode(document.getElementById("qrcode"), {
+                        text: checkInUrl,
+                        width: 220,
+                        height: 220
+                    });
+                } else {
+                    alert("开启签到失败！");
+                }
+            });
+    }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>

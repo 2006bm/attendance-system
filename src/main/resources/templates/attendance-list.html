@@ -2,21 +2,78 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>我的考勤记录</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>考勤记录</title>
     <!-- 引入 Bootstrap 5 美化 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* 日历自定义轻量级样式 */
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+        }
+        .calendar-header-cell {
+            text-align: center;
+            font-weight: bold;
+            padding: 10px 0;
+            background-color: #343a40;
+            color: #fff;
+            border-radius: 4px;
+        }
+        .calendar-cell {
+            min-height: 95px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 6px;
+            background-color: #fff;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: background-color 0.2s;
+        }
+        .calendar-cell:hover {
+            background-color: #f1f3f5;
+        }
+        .calendar-cell-empty {
+            min-height: 95px;
+            background-color: #e9ecef;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            opacity: 0.6;
+        }
+        .calendar-day-num {
+            font-weight: bold;
+            font-size: 1.1rem;
+            color: #495057;
+        }
+        .calendar-status-container {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .calendar-badge {
+            font-size: 0.75rem;
+            padding: 2px 5px;
+            border-radius: 3px;
+            text-align: center;
+            color: white;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body class="container mt-5">
 
-<!-- 1. 动态引入我们第十二周写的头部导航栏，并传递参数 'list' -->
+<!-- 1. 动态引入头部导航栏 -->
 <div th:replace="fragments/navbar :: navbar('attendanceList')"></div>
 
 <div class="row justify-content-center">
     <div class="col-md-11">
-        <h2 class="mb-4">📋 我的考勤记录</h2>
+
+        <!-- 👈 优化 1：标题根据当前用户角色动态显示 -->
+        <h2 class="mb-4" th:text="${isStudent} ? '📋 个人考勤记录' : '📋 学生的考勤记录'">📋 学生的考勤记录</h2>
 
         <!-- 2. 高级多条件筛选表单 -->
-        <!-- 注意：method="get" 表示点击查询时，参数会自动拼接到网址栏里 -->
         <form th:action="@{/attendance/list}" method="get" class="card p-3 shadow-sm mb-4 bg-light">
             <div class="row g-3">
                 <!-- 课程筛选 -->
@@ -24,7 +81,6 @@
                     <label class="form-label fw-bold">课程选择：</label>
                     <select name="courseId" class="form-select">
                         <option value="">-- 全部课程 --</option>
-                        <!-- 循环渲染当前学生的选课，并实现“选中回显” -->
                         <option th:each="c : ${courses}"
                                 th:value="${c.courseId}"
                                 th:text="${c.courseName}"
@@ -39,7 +95,6 @@
                     <select name="status" class="form-select">
                         <option value="">-- 全部状态 --</option>
                         <option value="NORMAL" th:selected="${status == 'NORMAL'}">✅ 正常</option>
-                        <option value="LATE" th:selected="${status == 'LATE'}">⏰ 迟到</option>
                         <option value="EARLY_LEAVE" th:selected="${status == 'EARLY_LEAVE'}">🚶 早退</option>
                         <option value="ABSENT" th:selected="${status == 'ABSENT'}">❌ 缺勤</option>
                     </select>
@@ -59,73 +114,276 @@
                 <!-- 操作按钮组 -->
                 <div class="col-md-3 d-flex align-items-end gap-2">
                     <button type="submit" class="btn btn-primary w-50 fw-bold">🔍 查询</button>
-                    <!-- 导出按钮：带上当前的筛选参数，点击一键下载 CSV -->
                     <a th:href="@{/attendance/export(status=${status},courseId=${courseId})}"
                        class="btn btn-success w-50 fw-bold">📥 导出</a>
                 </div>
             </div>
         </form>
 
-        <!-- 3. 数据展示表格 -->
-        <table class="table table-bordered table-hover shadow-sm bg-white">
-            <thead class="table-dark">
-            <tr class="text-center">
-                <th>日期</th>
-                <th>课程编号</th>
-                <th>打卡时间</th>
-                <th>考勤状态</th>
-            </tr>
-            </thead>
-            <tbody>
-            <!-- 如果没有记录，显示提示 -->
-            <tr th:if="${#lists.isEmpty(records)}">
-                <td colspan="4" class="text-center text-muted py-4">暂无符合条件的考勤记录。</td>
-            </tr>
-            <!-- 循环渲染考勤列表 -->
-            <tr th:each="record : ${records}" class="text-center align-middle">
-                <!-- 格式化日期：2023-10-23 -->
-                <td th:text="${#temporals.format(record.checkInTime, 'yyyy-MM-dd')}">2023-10-23</td>
-                <td th:text="${record.courseId}" class="fw-bold text-secondary">CS101</td>
-                <!-- 格式化时间：08:05:23 -->
-                <td th:text="${#temporals.format(record.checkInTime, 'HH:mm:ss')}">08:05:00</td>
-                <td>
-                    <!-- 动态状态微章：根据状态展示不同颜色的 Bootstrap 药丸微章 -->
-                    <span class="badge rounded-pill px-3 py-2"
-                          th:classappend="${record.status == 'NORMAL'} ? 'bg-success' :
-                                         (${record.status == 'LATE' || record.status == 'EARLY_LEAVE'} ? 'bg-warning text-dark' : 'bg-danger')"
-                          th:text="${record.status == 'NORMAL' ? '正常' :
-                                   (record.status == 'LATE' ? '迟到' :
-                                   (record.status == 'EARLY_LEAVE' ? '早退' : '缺勤'))}">
-                        正常
-                    </span>
-                </td>
-            </tr>
-            </tbody>
-        </table>
+        <!-- 3. 仅限学生端展示：视图切换按钮组 -->
+        <div th:if="${isStudent}" class="d-flex justify-content-end mb-3 gap-2">
+            <button id="btnTable" class="btn btn-primary btn-sm fw-bold" onclick="switchView('table')">📋 表格历史</button>
+            <button id="btnCalendar" class="btn btn-outline-primary btn-sm fw-bold" onclick="switchView('calendar')">📅 考勤日历</button>
+        </div>
 
-        <!-- 4. 智能分页导航栏 -->
-        <nav th:if="${totalPages > 0}" class="mt-4">
-            <ul class="pagination justify-content-center">
-                <!-- 上一页（注意：必须带上当前的筛选参数，否则翻页时筛选会丢失） -->
-                <li class="page-item" th:classappend="${currentPage == 1} ? 'disabled'">
-                    <a class="page-link" th:href="@{/attendance/list(page=${currentPage - 1}, courseId=${courseId}, status=${status}, quickRange=${quickRange})}">上一页</a>
-                </li>
+        <!-- 4. 数据展示表格 -->
+        <div id="tableView" class="table-responsive">
+            <table class="table table-bordered table-hover shadow-sm bg-white">
+                <thead class="table-dark">
+                <tr class="text-center">
+                    <th>日期</th>
+                    <th>课程编号</th>
+                    <th>打卡时间</th>
+                    <th>考勤状态</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:if="${#lists.isEmpty(records)}">
+                    <td colspan="4" class="text-center text-muted py-4">暂无符合条件的考勤记录。</td>
+                </tr>
+                <tr th:each="record : ${records}" class="text-center align-middle">
+                    <td th:text="${#temporals.format(record.checkInTime, 'yyyy-MM-dd')}">2023-10-23</td>
+                    <td th:text="${record.courseId}" class="fw-bold text-secondary">CS101</td>
+                    <td th:text="${#temporals.format(record.checkInTime, 'HH:mm:ss')}">08:05:00</td>
+                    <td>
+                        <span class="badge rounded-pill px-3 py-2"
+                              th:classappend="${record.status == 'NORMAL'} ? 'bg-success' :
+                                             (${record.status == 'LATE' || record.status == 'EARLY_LEAVE'} ? 'bg-warning text-dark' :
+                                             (${record.status == 'LEAVE'} ? 'bg-info' : 'bg-danger'))"
+                              th:text="${record.status == 'NORMAL' ? '正常' :
+                                       (record.status == 'LATE' ? '迟到' :
+                                       (record.status == 'EARLY_LEAVE' ? '早退' :
+                                       (record.status == 'LEAVE' ? '请假' : '缺勤')))}">
+                            正常
+                        </span>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
 
-                <!-- 当前页数显示 -->
-                <li class="page-item active">
-                    <span class="page-link" th:text="${currentPage}">1</span>
-                </li>
+            <!-- 分页导航栏 -->
+            <nav th:if="${totalPages > 0}" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item" th:classappend="${currentPage == 1} ? 'disabled'">
+                        <a class="page-link" th:href="@{/attendance/list(page=${currentPage - 1}, courseId=${courseId}, status=${status}, quickRange=${quickRange})}">上一页</a>
+                    </li>
+                    <li class="page-item active">
+                        <span class="page-link" th:text="${currentPage}">1</span>
+                    </li>
+                    <li class="page-item" th:classappend="${currentPage >= totalPages} ? 'disabled'">
+                        <a class="page-link" th:href="@{/attendance/list(page=${currentPage + 1}, courseId=${courseId}, status=${status}, quickRange=${quickRange})}">下一页</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
 
-                <!-- 下一页 -->
-                <li class="page-item" th:classappend="${currentPage >= totalPages} ? 'disabled'">
-                    <a class="page-link" th:href="@{/attendance/list(page=${currentPage + 1}, courseId=${courseId}, status=${status}, quickRange=${quickRange})}">下一页</a>
-                </li>
-            </ul>
-        </nav>
+        <!-- 5. 考勤日历视图 -->
+        <div th:if="${isStudent}" id="calendarView" class="card shadow-sm p-4 bg-white d-none">
+            <!-- 日历头部控制器 -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="fw-bold mb-0 text-primary">📅 个人考勤日历视图</h4>
+
+                <!-- 年月选择器 -->
+                <div class="d-flex gap-2">
+                    <select id="selectYear" class="form-select form-select-sm" style="width: 110px;" onchange="onDateSelectorChange()">
+                    </select>
+                    <select id="selectMonth" class="form-select form-select-sm" style="width: 100px;" onchange="onDateSelectorChange()">
+                        <option value="0">1月</option>
+                        <option value="1">2月</option>
+                        <option value="2">3月</option>
+                        <option value="3">4月</option>
+                        <option value="4">5月</option>
+                        <option value="5">6月</option>
+                        <option value="6">7月</option>
+                        <option value="7">8月</option>
+                        <option value="8">9月</option>
+                        <option value="9">10月</option>
+                        <option value="10">11月</option>
+                        <option value="11">12月</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- 日历主表格 -->
+            <div class="calendar-grid">
+                <!-- 星期表头 -->
+                <div class="calendar-header-cell">日</div>
+                <div class="calendar-header-cell">一</div>
+                <div class="calendar-header-cell">二</div>
+                <div class="calendar-header-cell">三</div>
+                <div class="calendar-header-cell">四</div>
+                <div class="calendar-header-cell">五</div>
+                <div class="calendar-header-cell">六</div>
+            </div>
+            <!-- 日期动态填充容器 -->
+            <div id="calendarDays" class="calendar-grid mt-2"></div>
+        </div>
+
     </div>
 </div>
 
-<!-- 引入 Bootstrap JS 激活弹窗的关闭按钮 -->
+<!-- 引入 Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- 考勤日历前端动态计算与渲染脚本 -->
+<script th:inline="javascript">
+    function switchView(viewType) {
+        const tableBtn = document.getElementById('btnTable');
+        const calBtn = document.getElementById('btnCalendar');
+        const tableView = document.getElementById('tableView');
+        const calView = document.getElementById('calendarView');
+
+        if (viewType === 'table') {
+            tableBtn.className = "btn btn-primary btn-sm fw-bold";
+            calBtn.className = "btn btn-outline-primary btn-sm fw-bold";
+            tableView.classList.remove('d-none');
+            calView.classList.add('d-none');
+        } else {
+            calBtn.className = "btn btn-primary btn-sm fw-bold";
+            tableBtn.className = "btn btn-outline-primary btn-sm fw-bold";
+            tableView.classList.add('d-none');
+            calView.classList.remove('d-none');
+
+            const year = parseInt(document.getElementById('selectYear').value);
+            const month = parseInt(document.getElementById('selectMonth').value);
+            renderCalendar(year, month);
+        }
+    }
+
+    /*[# th:if="${isStudent}"]*/
+    const records = /*[[${records}]]*/ [];
+
+    // 调试辅助日志：如果您在浏览器中按 F12 打开开发者工具，可以在 Console 中看到后端传入的数据结构
+    console.log("====== [调试日志] 后端传入的考勤记录数据结构为:", records);
+
+    // 👈 优化 2：全兼容型日期解析器，全面覆盖三种 Jackson 序列化格式
+    function formatDateToYYYYMMDD(checkInTime) {
+        if (!checkInTime) return "";
+
+        // 格式 1：标准的 ISO 字符串（例如 "2026-06-12T16:38:50"）
+        if (typeof checkInTime === 'string') {
+            return checkInTime.split('T')[0].split(' ')[0];
+        }
+
+        // 格式 2：数组结构（例如 [2026, 6, 12, 16, 40, 36]）
+        if (Array.isArray(checkInTime)) {
+            const y = checkInTime[0];
+            const m = String(checkInTime[1]).padStart(2, '0');
+            const d = String(checkInTime[2]).padStart(2, '0');
+            return y + "-" + m + "-" + d;
+        }
+
+        // 格式 3：未引入日期转换依赖时的复杂嵌套对象（例如 {year: 2026, monthValue: 6, dayOfMonth: 12}）
+        if (typeof checkInTime === 'object') {
+            const y = checkInTime.year || checkInTime.yearOfEra;
+            // 兼容可能出现的英文月份名或数字月份值
+            const mVal = checkInTime.monthValue || (checkInTime.month ? getMonthNum(checkInTime.month) : null);
+            const d = checkInTime.dayOfMonth || checkInTime.day;
+            if (y && mVal && d) {
+                return y + "-" + String(mVal).padStart(2, '0') + "-" + String(d).padStart(2, '0');
+            }
+        }
+        return "";
+    }
+
+    // 辅助工具：将可能存在的英文月份名转成数字
+    function getMonthNum(monthStr) {
+        const months = {
+            'JANUARY': 1, 'FEBRUARY': 2, 'MARCH': 3, 'APRIL': 4, 'MAY': 5, 'JUNE': 6,
+            'JULY': 7, 'AUGUST': 8, 'SEPTEMBER': 9, 'OCTOBER': 10, 'NOVEMBER': 11, 'DECEMBER': 12
+        };
+        if (typeof monthStr === 'string') {
+            return months[monthStr.toUpperCase()] || 1;
+        }
+        return monthStr;
+    }
+
+    const selectYear = document.getElementById('selectYear');
+    const selectMonth = document.getElementById('selectMonth');
+
+    const defaultDate = new Date();
+    const currentYear = defaultDate.getFullYear();
+    const currentMonth = defaultDate.getMonth();
+
+    for (let y = currentYear - 3; y <= currentYear + 3; y++) {
+        const opt = document.createElement('option');
+        opt.value = y;
+        opt.innerText = y + "年";
+        if (y === currentYear) opt.selected = true;
+        selectYear.appendChild(opt);
+    }
+    selectMonth.value = currentMonth;
+
+    function onDateSelectorChange() {
+        const year = parseInt(selectYear.value);
+        const month = parseInt(selectMonth.value);
+        renderCalendar(year, month);
+    }
+
+    function renderCalendar(year, month) {
+        const daysContainer = document.getElementById('calendarDays');
+        daysContainer.innerHTML = "";
+
+        const firstDayIndex = new Date(year, month, 1).getDay();
+        const totalDays = new Date(year, month + 1, 0).getDate();
+
+        for (let i = 0; i < firstDayIndex; i++) {
+            const emptyCell = document.createElement('div');
+            emptyCell.className = "calendar-cell-empty";
+            daysContainer.appendChild(emptyCell);
+        }
+
+        for (let day = 1; day <= totalDays; day++) {
+            const cell = document.createElement('div');
+            cell.className = "calendar-cell";
+
+            const dayNum = document.createElement('span');
+            dayNum.className = "calendar-day-num";
+            dayNum.innerText = day;
+            cell.appendChild(dayNum);
+
+            const currentDateStr = year + "-" + String(month + 1).padStart(2, '0') + "-" + String(day).padStart(2, '0');
+
+            const todayRecords = records.filter(r => {
+                const parsedDate = formatDateToYYYYMMDD(r.checkInTime);
+                return parsedDate === currentDateStr;
+            });
+
+            const statusContainer = document.createElement('div');
+            statusContainer.className = "calendar-status-container";
+
+            todayRecords.forEach(r => {
+                const badge = document.createElement('span');
+                badge.className = "calendar-badge";
+
+                if (r.status === 'NORMAL') {
+                    badge.classList.add('bg-success');
+                    badge.innerText = "正常";
+                } else if (r.status === 'LATE') {
+                    badge.classList.add('bg-warning', 'text-dark');
+                    badge.innerText = "迟到";
+                } else if (r.status === 'EARLY_LEAVE') {
+                    badge.classList.add('bg-warning', 'text-dark');
+                    badge.innerText = "早退";
+                } else if (r.status === 'LEAVE') {
+                    badge.classList.add('bg-info');
+                    badge.innerText = "请假";
+                } else {
+                    badge.classList.add('bg-danger');
+                    badge.innerText = "缺勤";
+                }
+                statusContainer.appendChild(badge);
+            });
+
+            cell.appendChild(statusContainer);
+            daysContainer.appendChild(cell);
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        renderCalendar(currentYear, currentMonth);
+    });
+    /*[/]*/
+</script>
 </body>
 </html>

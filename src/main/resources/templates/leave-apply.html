@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>请假申请</title>
+    <!-- 引入 Bootstrap 5 美化 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container mt-5">
+
+<!-- 1. 动态引入导航栏，传入参数 'leaveApply' 维持高亮 -->
+<div th:replace="fragments/navbar :: navbar('leaveApply')"></div>
+
+<div class="row justify-content-center">
+    <!-- 左半边：提交请假表单 -->
+    <div class="col-md-5">
+        <div class="card shadow p-4 mb-4">
+            <h3 class="text-center text-success mb-4">📝 发起请假申请</h3>
+
+            <!-- 成功提交提示框 -->
+            <div th:if="${param.success}" class="alert alert-success alert-dismissible fade show" role="alert">
+                🎉 <strong>提交成功！</strong> 请等待任课老师审批。
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+
+            <form th:action="@{/leave/apply}" th:object="${leave}" method="post">
+                <!-- 选择请假课程 -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">选择课程：</label>
+                    <select class="form-select" th:field="*{courseId}" required>
+                        <option value="">-- 请选择要请假的课程 --</option>
+                        <option th:each="c : ${courses}" th:value="${c.courseId}" th:text="${c.courseName}"></option>
+                    </select>
+                </div>
+
+                <!-- 请假原因 -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">请假事由：</label>
+                    <textarea class="form-control" th:field="*{reason}" rows="4" placeholder="请详细说明请假原因（病假/事假）..." required></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-success w-100 py-2 fw-bold shadow-sm">提交请假申请</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 右半边：展示我的请假历史与状态 -->
+    <div class="col-md-7">
+        <div class="card shadow p-4">
+            <h3 class="mb-4">📜 我的请假历史</h3>
+            <table class="table table-hover align-middle text-center">
+                <thead class="table-light">
+                <tr>
+                    <th>申请日期</th>
+                    <th>课程</th>
+                    <th>原因</th>
+                    <th>审批状态</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:if="${#lists.isEmpty(history)}">
+                    <td colspan="4" class="text-center text-muted py-4">暂无请假申请记录。</td>
+                </tr>
+                <tr th:each="req : ${history}">
+                    <!-- 格式化时间为 yyyy-MM-dd -->
+                    <td th:text="${#temporals.format(req.createTime, 'yyyy-MM-dd')}">2023-10-23</td>
+                    <td th:text="${req.courseId}" class="fw-bold text-secondary">CS101</td>
+                    <td th:text="${req.reason}" class="text-start">感冒发烧</td>
+                    <td>
+                        <!-- 动态徽章：根据审批状态改变颜色 -->
+                        <span class="badge rounded-pill px-3 py-2"
+                              th:classappend="${req.status == 'PENDING'} ? 'bg-warning text-dark' :
+                                             (${req.status == 'APPROVED'} ? 'bg-success' : 'bg-danger')"
+                              th:text="${req.status == 'PENDING' ? '⏳ 待审批' :
+                                       (req.status == 'APPROVED' ? '✅ 已同意' : '❌ 已拒绝')}">
+                            待审批
+                        </span>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

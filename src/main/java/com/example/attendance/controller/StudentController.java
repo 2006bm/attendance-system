@@ -72,8 +72,6 @@ public class StudentController {
 //        return Result.success(successMsg);
 //    }
 
-    // 任务要求 2：使用 @Autowired 注入 Service 依赖
-    // 意思：前台接待员关联了 Service 大厨
     @Autowired
     private StudentService studentService;
 
@@ -93,22 +91,43 @@ public class StudentController {
 //        return Result.success(student);
 //    }
 
+    // 1. 👈 确保在 StudentController 顶部注入了 userRepository，用于获取老师的自增 ID
+    @Autowired
+    private com.example.attendance.repository.UserRepository userRepository;
+
+
     @GetMapping("/list")
     public String list(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "5") int size,
+            org.springframework.security.core.Authentication authentication, // 👈 2. 引入身份对象
             Model model) {
 
-        // 注意：PageRequest 页码从0开始，所以这里要 page - 1
         Pageable pageable = PageRequest.of(page - 1, size, Sort.by("studentId").ascending());
-        Page<Student> studentPage = studentService.findAll(pageable); // 确保 Service 里调用了 repository.findAll(pageable)
+        Page<Student> studentPage;
 
-        // 2. 传递这四个关键变量
+        // 3. 获取当前登录人的身份和自增 ID
+        String username = authentication.getName();
+        com.example.attendance.entity.User user = userRepository.findByUsername(username).orElseThrow();
+
+        // 判断是不是管理员
+        boolean isAdmin = authentication.getAuthorities().contains(
+                new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN"));
+
+        if (isAdmin) {
+            // 4. 👈 管理员（admin_miao）：展示全校所有学生的档案
+            studentPage = studentService.findAll(pageable);
+        } else {
+            // 5. 👈 教师（teacher_li）：只展示选了自己课的学生！
+            studentPage = studentService.getStudentsByTeacher(user.getId(), pageable);
+        }
+
         model.addAttribute("students", studentPage.getContent());
         model.addAttribute("currentPage", page);
         model.addAttribute("totalPages", studentPage.getTotalPages());
+        model.addAttribute("totalElements", studentPage.getTotalElements());
 
-        return "student-list";// 返回 templates/student-list.html
+        return "student-list";
     }
 
     // 1. 打开新增页面
@@ -137,6 +156,14 @@ public class StudentController {
             return "student-form";
         }
         studentService.save(student);
+        return "redirect:/student/list";
+    }
+
+    @GetMapping("/delete/{id}")
+    public String deleteStudent(@PathVariable Long id) {
+        // 2. 执行删除
+        studentService.deleteStudent(id);
+        // 3. 删完后，指挥浏览器自动重定向回到列表页，刷新数据
         return "redirect:/student/list";
     }
 }

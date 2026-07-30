@@ -51,7 +51,12 @@ public class Course {
     // --- 必须有的无参构造方法 ---
     public Course() {
     }
+    @ManyToOne
+    private Student student; // 关键：这个字段名决定了 Repository 方法的路径
 
+    // Getter/Setter
+    public Student getStudent() { return student; }
+    public void setStudent(Student student) { this.student = student; }
     // --- Getter 和 Setter ---
     public String getCourseId() { return courseId; }
     public void setCourseId(String courseId) { this.courseId = courseId; }

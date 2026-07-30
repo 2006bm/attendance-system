@@ -20,4 +20,6 @@ public interface AttendanceService {
     List<Attendance> getFilteredList(Specification<Attendance> spec);
 
     ImportResult importFromExcel(String filePath);
+    String startSignSession(String courseId, int expireMinutes); // 教师发起签到
+    boolean verifySignCode(String courseId, String inputCode);   // 验证签到码
 }

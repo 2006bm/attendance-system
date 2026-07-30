@@ -1,42 +1,50 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="container mt-5">
 <div th:replace="fragments/navbar :: navbar('studentList')"></div>
 <h2>学生列表</h2>
 <a href="/student/add" class="btn btn-primary">新增学生</a>
+<div class="table-responsive">
 <table class="table table-bordered table-hover">
-  <thead class="table-light">
+  <thead class="table-light text-center">
   <tr>
     <th>id</th>
     <th>学号</th>
     <th>姓名</th>
-    <th>班级</th>
     <th>性别</th>
-    <th>出生日期</th>
-    <th>联系方式</th>
+    <th>学院</th>
+    <th>年级</th>
+    <th>专业</th>
+    <th>班级</th>
     <th>操作</th>
   </tr>
   </thead>
   <tbody>
-  <!-- 核心渲染：如果 students 是空的，这里就不会显示行 -->
-  <tr th:each="s : ${students}">
+  <tr th:each="s : ${students}" class="text-center">
     <td th:text="${s.id}"></td>
     <td th:text="${s.studentId}"></td>
     <td th:text="${s.studentName}"></td>
-    <td th:text="${s.className}"></td>
     <td th:text="${s.gender}"></td>
-    <td th:text="${s.birthday}"></td>
-    <td th:text="${s.phone}"></td>
+    <td th:text="${s.college}"></td>
+    <td th:text="${s.grade}"></td>
+    <td th:text="${s.major}"></td>
+    <td th:text="${s.className}"></td>
     <td>
-      <a th:href="@{/student/edit/{id}(id=${s.id})}">编辑</a>
+      <a th:href="@{/student/edit/{id}(id=${s.id})}" class="btn btn-sm btn-warning">编辑</a>
+      <a th:href="@{/student/delete/{id}(id=${s.id})}"
+         class="btn btn-sm btn-danger fw-bold ms-1"
+         onclick="return confirm('⚠️ 警告：确定要删除这名学生吗？该操作不可逆！')">
+        删除
+      </a>
     </td>
   </tr>
   </tbody>
 </table>
-
+</div>>
 <!-- 分页导航 -->
 <nav>
   <ul class="pagination">

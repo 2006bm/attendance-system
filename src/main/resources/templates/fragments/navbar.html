@@ -1,45 +1,54 @@
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4"
      xmlns:th="http://www.thymeleaf.org"
      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
-        th:fragment="navbar(activeTab)">
-<div class="container">
-    <a class="navbar-brand fw-bold" href="/dashboard">🏫 考勤系统</a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-        <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="navbarNav">
-        <ul class="navbar-nav me-auto">
-            <!-- 1. ⏱️ 考勤打卡：只有 STUDENT（学生）能看到 -->
-            <li class="nav-item" sec:authorize="hasRole('STUDENT')">
-                <a class="nav-link"
-                   th:classappend="${activeTab == 'checkIn'} ? 'active' : ''"
-                   href="/attendance/checkIn">⏱️ 考勤打卡</a>
-            </li>
+     th:fragment="navbar(activeTab)">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="/dashboard">🏫 考勤系统</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <!-- 仅登录的学生能看打卡 -->
+                <li class="nav-item" sec:authorize="hasRole('STUDENT')">
+                    <a class="nav-link" th:classappend="${activeTab == 'checkIn'} ? 'active' : ''" href="/attendance/checkIn">⏱️ 考勤打卡</a>
+                </li>
+                <li class="nav-item" sec:authorize="hasRole('STUDENT')">
+                    <a class="nav-link" th:classappend="${activeTab == 'leaveApply'} ? 'active' : ''" href="/leave/apply">📝 请假申请</a>
+                </li>
+                <!-- 仅登录的老师/管理员能看记录和列表 -->
+                <li class="nav-item" sec:authorize="hasAnyRole('STUDENT','TEACHER','ADMIN')">
+                    <a class="nav-link" th:classappend="${activeTab == 'attendanceList'} ? 'active' : ''" href="/attendance/list">📋 考勤记录</a>
+                </li>
+                <li class="nav-item" sec:authorize="hasAnyRole('ADMIN')">
+                    <a class="nav-link" th:classappend="${activeTab == 'import'} ? 'active' : ''" href="/attendance/import">📥 导入名单</a>
+                </li>
+                <li class="nav-item" sec:authorize="hasAnyRole('TEACHER', 'ADMIN')">
+                    <a class="nav-link" th:classappend="${activeTab == 'studentList'} ? 'active' : ''" href="/student/list">👥 学生列表</a>
+                </li>
+                <li class="nav-item" sec:authorize="hasAnyRole('TEACHER', 'ADMIN')">
+                    <a class="nav-link" th:classappend="${activeTab == 'leaveApprove'} ? 'active' : ''" href="/leave/approve">⚖️ 请假审批</a>
+                </li>
+            </ul>
 
-            <!-- 2. 📋 考勤记录：只有 TEACHER（教师）或 ADMIN（管理员）能看到 -->
-            <li class="nav-item" sec:authorize="hasAnyRole('TEACHER', 'ADMIN')">
-                <a class="nav-link"
-                   th:classappend="${activeTab == 'attendanceList'} ? 'active' : ''"
-                   href="/attendance/list">📋 考勤记录</a>
-            </li>
+            <!-- 👈 【核心改造】导航栏右侧：根据登录状态动态展示 -->
+            <div class="navbar-nav ms-auto">
+                <!-- A. 如果用户【未登录】(显示登录和注册按钮) -->
+<!--                <div sec:authorize="isAnonymous()" class="d-flex gap-2">-->
+<!--                    <a class="btn btn-sm btn-outline-light px-3" href="/login">登录</a>-->
+<!--                    <a class="btn btn-sm btn-primary px-3" href="/register">注册</a>-->
+<!--                </div>-->
 
-            <!-- 3. 📥 导入考勤：只有 TEACHER 或 ADMIN 能看到 -->
-            <li class="nav-item" sec:authorize="hasAnyRole('TEACHER', 'ADMIN')">
-                <a class="nav-link"
-                   th:classappend="${activeTab == 'import'} ? 'active' : ''"
-                   href="/attendance/import">📥 导入考勤</a>
-            </li>
+                <!-- B. 如果用户【已登录】(显示欢迎语和退出按钮) -->
+                <div sec:authorize="isAuthenticated()" class="d-flex align-items-center gap-3">
+                    <span class="text-light-50 small">
+                        👋 欢迎您，<strong sec:authentication="name" class="text-info">用户名</strong>
+                    </span>
+                    <a class="btn btn-sm btn-outline-info px-2" href="/user/password">🔑 修改密码</a>
+                    <a class="btn btn-sm btn-outline-danger px-3" href="/logout">安全退出</a>
+                </div>
+            </div>
 
-            <!-- 4. 👥 学生列表：只有 TEACHER 或 ADMIN 能看到 -->
-            <li class="nav-item" sec:authorize="hasAnyRole('TEACHER', 'ADMIN')">
-                <a class="nav-link"
-                   th:classappend="${activeTab == 'studentList'} ? 'active' : ''"
-                   href="/student/list">👥 学生列表</a>
-            </li>
-        </ul>
-        <span class="navbar-text">
-                <a class="btn btn-sm btn-outline-danger" href="/logout">安全退出</a>
-            </span>
+        </div>
     </div>
-</div>
 </nav>

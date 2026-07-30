@@ -1,67 +1,86 @@
-<p th:text="${student.studentName}"></p>
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <title>学生信息表单</title>
+    <!-- 引入 Bootstrap 5 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="container mt-5">
+
+<!-- 引入导航栏 -->
+<div th:replace="fragments/navbar :: navbar('studentList')"></div>
+
 <div class="row justify-content-center">
     <div class="col-md-6">
-        <h2 class="mb-4" th:text="${student.id == null ? '新增学生' : '编辑学生'}">学生表单</h2>
+        <div class="card shadow p-4 border-0">
+            <h2 class="mb-4 text-center text-primary" th:text="${student.id == null ? '➕ 新增学生档案' : '📝 编辑学生档案'}">学生表单</h2>
 
-        <!-- 表单：th:object 将页面和后端传来的 student 对象绑定 -->
-        <form th:action="@{/student/save}" th:object="${student}" method="post">
-            <!-- 隐藏 ID 字段，否则更新时找不到是哪一条数据 -->
-            <input type="hidden" th:field="*{id}" />
-            <!-- 年龄 -->
-            <div class="mb-3">
-                <label>年龄：</label>
-                <input type="number" th:field="*{age}" class="form-control" />
-            </div>
+            <!-- 表单：th:object 将页面和后端传来的 student 对象绑定 -->
+            <form th:action="@{/student/save}" th:object="${student}" method="post">
+                <!-- 隐藏 ID 字段，否则更新时找不到是哪一条数据 -->
+                <input type="hidden" th:field="*{id}" />
 
-            <!-- 班级 -->
-            <div class="mb-3">
-                <label>班级：</label>
-                <input type="text" th:field="*{className}" class="form-control" />
-            </div>
-            <div class="mb-3">
-                <label>学号：</label>
-                <input type="text" th:field="*{studentId}" class="form-control" required />
-            </div>
+                <!-- 1. 学号 -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">学号：</label>
+                    <input type="text" th:field="*{studentId}" class="form-control" required />
+                    <div th:if="${#fields.hasErrors('studentId')}" th:errors="*{studentId}" class="text-danger small"></div>
+                </div>
 
-            <div class="mb-3">
-                <label>姓名：</label>
-                <input type="text" th:field="*{studentName}" class="form-control" required />
-            </div>
+                <!-- 2. 姓名 -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">姓名：</label>
+                    <input type="text" th:field="*{studentName}" class="form-control" required />
+                    <div th:if="${#fields.hasErrors('studentName')}" th:errors="*{studentName}" class="text-danger small"></div>
+                </div>
 
-            <div class="mb-3">
-                <label>性别：</label>
-                <select th:field="*{gender}" class="form-select">
-                    <option value="男">男</option>
-                    <option value="女">女</option>
-                </select>
-                <span th:if="${#fields.hasErrors('gender')}" th:errors="*{gender}" style="color:red;"></span>
+                <!-- 3. 性别 -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">性别：</label>
+                    <select th:field="*{gender}" class="form-select">
+                        <option value="男">男</option>
+                        <option value="女">女</option>
+                    </select>
+                </div>
 
-            </div>
+                <!-- 4. 👈 新增：学院 -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">学院：</label>
+                    <input type="text" th:field="*{college}" class="form-control" placeholder="如：计算机与人工智能学院" />
+                </div>
 
-            <div class="mb-3">
-                <label>出生日期：</label>
-                <input type="date" th:field="*{birthday}" class="form-control" />
-                <span th:if="${#fields.hasErrors('birthday')}" th:errors="*{birthday}" style="color:red;"></span>
-            </div>
+                <!-- 5. 👈 新增：年级 -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">年级：</label>
+                    <input type="number" th:field="*{grade}" class="form-control" placeholder="如：2024" />
+                </div>
 
-            <div class="mb-3">
-                <label>联系方式：</label>
-                <input type="text" th:field="*{phone}" class="form-control" />
-                <span th:if="${#fields.hasErrors('phone')}" th:errors="*{phone}" style="color:red;"></span>
-            </div>
+                <!-- 6. 👈 新增：专业 -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">专业：</label>
+                    <input type="text" th:field="*{major}" class="form-control" placeholder="如：人工智能" />
+                </div>
 
-            <button type="submit" class="btn btn-success">保存信息</button>
-            <a href="/student/list" class="btn btn-secondary">取消</a>
-        </form>
+                <!-- 7. 班级 -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">班级：</label>
+                    <input type="text" th:field="*{className}" class="form-control" placeholder="如：2024级人工智能" />
+                </div>
+
+                <div class="row g-2 mt-2">
+                    <div class="col-6">
+                        <button type="submit" class="btn btn-success w-100 py-2 fw-bold">💾 保存信息</button>
+                    </div>
+                    <div class="col-6">
+                        <a href="/student/list" class="btn btn-secondary w-100 py-2 fw-bold">❌ 取消</a>
+                    </div>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

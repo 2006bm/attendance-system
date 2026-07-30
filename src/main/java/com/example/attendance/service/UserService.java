@@ -12,4 +12,5 @@ public interface UserService {
     String deleteUser(Long id);
 
     String register(RegisterRequest request);
+    String updatePassword(String username, String oldPassword, String newPassword);
 }

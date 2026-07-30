@@ -8,6 +8,7 @@ import com.example.attendance.repository.CourseRepository; // 👈 记得注入�
 import com.example.attendance.repository.StudentRepository;
 import com.example.attendance.service.AttendanceService;
 import com.example.attendance.util.ImportResult;
+import com.example.attendance.util.SignInSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,6 +16,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
@@ -22,10 +24,12 @@ import org.apache.poi.ss.usermodel.*;
 import java.io.File;
 import java.io.FileInputStream;
 import java.time.format.DateTimeFormatter;
+import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class AttendanceServiceImpl implements AttendanceService {
-
+    private static final ConcurrentHashMap<String, SignInSession> activeSessions = new ConcurrentHashMap<>();
     @Autowired
     private AttendanceRepository attendanceRepository;
 
@@ -37,29 +41,23 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     @Override
     public Attendance signIn(Attendance attendance) {
-        // 1. 获取课程信息
         Course course = courseRepository.findById(attendance.getCourseId())
                 .orElseThrow(() -> new RuntimeException("未找到该课程！"));
 
-        LocalTime nowTime = LocalTime.now(); // 当前时刻
-        LocalTime classStart = course.getStartTime(); // 上课时间 (如 08:00)
-
-        // 2. 时间限制校验：只能在 [上课前15分钟, 上课后30分钟] 内打卡
-        LocalTime allowedStart = classStart.minusMinutes(15); // 07:45
-        LocalTime allowedEnd = classStart.plusMinutes(30);   // 08:30
+        LocalTime nowTime = LocalTime.now();
+        LocalTime classStart = course.getStartTime();
+        LocalTime classEnd = course.getEndTime();
+        // 1. 时间限制校验
+        LocalTime allowedStart = classStart.minusMinutes(15);
+        LocalTime allowedEnd = classEnd;
 
         if (nowTime.isBefore(allowedStart) || nowTime.isAfter(allowedEnd)) {
-            // 抛出异常，阻止打卡，并带上失败提示
             throw new RuntimeException("打卡失败：当前不在打卡时间范围内（允许时间："
                     + allowedStart + " ~ " + allowedEnd + "）");
         }
 
-        // 3. 自动判定迟到：超过上课时刻，设为迟到
-        if (nowTime.isAfter(classStart)) {
-            attendance.setStatus("LATE"); // 迟到
-        } else {
-            attendance.setStatus("NORMAL"); // 正常出勤
-        }
+        // 2. 👈 【核心修改】：取消迟到判定，只要在时间范围内，状态一律设为正常 NORMAL
+        attendance.setStatus("NORMAL");
 
         attendance.setCheckInTime(LocalDateTime.now());
         return attendanceRepository.save(attendance);
@@ -200,5 +198,23 @@ public class AttendanceServiceImpl implements AttendanceService {
             default:
                 return "";
         }
+    }
+    @Override
+    public String startSignSession(String courseId, int expireMinutes) {
+        // 生成 4 位随机数，例如 "0842"
+        String code = String.format("%04d", new Random().nextInt(10000));
+        SignInSession session = new SignInSession(courseId, code, expireMinutes);
+        activeSessions.put(courseId, session);
+        return code;
+    }
+
+    @Override
+    public boolean verifySignCode(String courseId, String inputCode) {
+        SignInSession session = activeSessions.get(courseId);
+        if (session == null || session.isExpired()) {
+            activeSessions.remove(courseId); // 若已过期则清除
+            return false;
+        }
+        return session.getCode().equals(inputCode);
     }
 }

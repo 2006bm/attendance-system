@@ -7,7 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.util.List;
 
-@Service // 👈 别忘了贴上大厨标签！
+@Service
 public class CourseServiceImpl implements CourseService {
 
     @Autowired
@@ -15,7 +15,21 @@ public class CourseServiceImpl implements CourseService {
 
     @Override
     public List<Course> findByStudentId(String studentId) {
-        // 调用我们刚刚写了 SQL 的仓库方法
-        return courseRepository.findByStudentId(studentId);
+        List<Course> list = courseRepository.findByStudentId(studentId);
+
+        // 👈 核心修复：如果是新注册的学生，选课表里没数据，默认让他能看到所有课，防止下拉框为空！
+        if (list.isEmpty()) {
+            return courseRepository.findAll();
+        }
+        return list;
+    }
+    @Override
+    public List<Course> findByTeacherId(Long teacherId) {
+        return courseRepository.findByTeacherId(teacherId);
+    }
+    @Override
+    public List<Course> getAllCourses() {
+        // 调用 JPA 的库，查出系统里所有的课程
+        return courseRepository.findAll();
     }
 }

@@ -8,6 +8,7 @@ import com.example.attendance.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -60,10 +61,22 @@ public class UserServiceImpl implements UserService {
         // 2. 创建新用户对象并设置信息
         User user = new User();
         user.setUsername(request.getUsername());
-        user.setRealName(request.getRealName());
-        user.setRole(request.getRole());
 
-        // 3. 【核心步】将明文密码加密后存储
+        // 👈 【核心修复 1】：如果前端没传真实姓名，默认用“用户名”代替，绝对防止数据库报错！
+        if (request.getRealName() == null || request.getRealName().trim().isEmpty()) {
+            user.setRealName(request.getUsername());
+        } else {
+            user.setRealName(request.getRealName());
+        }
+
+        // 👈 【核心修复 2】：普通用户自助注册，角色一律默认设为 "STUDENT" (学生)
+        if (request.getRole() == null || request.getRole().trim().isEmpty()) {
+            user.setRole("STUDENT");
+        } else {
+            user.setRole(request.getRole());
+        }
+
+        // 3. 将明文密码加密后存储
         String encodedPassword = passwordEncoder.encode(request.getPassword());
         user.setPassword(encodedPassword);
 
@@ -71,5 +84,21 @@ public class UserServiceImpl implements UserService {
         userRepository.save(user);
 
         return "注册成功";
+    }
+    @Override
+    @Transactional
+    public String updatePassword(String username, String oldPassword, String newPassword) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
+
+        // 1. 👈 使用 matches 安全对比输入的旧密码与数据库里的密文
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+            throw new RuntimeException("旧密码输入错误！");
+        }
+
+        // 2. 将新密码加密后存入数据库
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        return "密码修改成功，下次登录生效";
     }
 }

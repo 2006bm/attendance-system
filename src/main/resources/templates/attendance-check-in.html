@@ -2,6 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>学生考勤打卡</title>
     <!-- 引入 Bootstrap 5 美化 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -36,7 +37,8 @@
                         <!-- Thymeleaf 循环渲染：把你数据库里查出来的该学生的选课，一个一个列出来 -->
                         <option th:each="course : ${courses}"
                                 th:value="${course.courseId}"
-                                th:text="${course.courseName} + ' (' + ${course.className} + ')'">
+                                th:text="${course.courseName} + ' (' + ${course.className} + ')'"
+                                th:selected="${course.courseId == selectedCourseId}">
                         </option>
                     </select>
                 </div>
@@ -55,9 +57,25 @@
                     <label class="form-label fw-bold">备注/假条：</label>
                     <textarea class="form-control" name="remark" rows="3" placeholder="如有迟到、请假等特殊情况请说明..."></textarea>
                 </div>
-
+                <div class="mb-3">
+                    <label class="form-label text-danger fw-bold">🔑 输入签到口令（由教师提供）：</label>
+                    <input type="text" name="signCode" class="form-control" placeholder="请输入大屏幕上的4位验证码" required />
+                </div>
                 <!-- 提交按钮 -->
-                <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">提交打卡</button>
+                <div class="row g-3">
+                    <div class="col-6">
+                        <!-- 点击此按钮，发送给后端的 action 参数值为 signin -->
+                        <button type="submit" name="action" value="signin" class="btn btn-success w-100 py-2 fw-bold shadow-sm">
+                            🟢 确认签到 (Sign In)
+                        </button>
+                    </div>
+                    <div class="col-6">
+                        <!-- 点击此按钮，发送给后端的 action 参数值为 signout -->
+                        <button type="submit" name="action" value="signout" class="btn btn-warning text-dark w-100 py-2 fw-bold shadow-sm">
+                            🟡 确认签退 (Sign Out)
+                        </button>
+                    </div>
+                </div>
 
                 <div class="text-center mt-3">
                     <a href="/dashboard" class="text-decoration-none">返回系统首页</a>
